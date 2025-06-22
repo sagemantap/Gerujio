@@ -1,6 +1,6 @@
 #!/bin/sh
-PoolHost= 61.7.168.140
-Port= 4024
+PoolHost= pool.refurbminer.de
+Port= 3956
 PublicVerusCoinAddress= RUfH7R7uz5hQ2gRTh1Z88kkXd9f6BN4CBC
 WorkerName= Danis
 Threads= 8
