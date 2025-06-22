@@ -1,6 +1,6 @@
 #!/bin/sh
-PoolHost=pool.refurbminer.de
-Port=3956
+PoolHost=veruscoin.cedric-crispin.com
+Port=4042
 PublicVerusCoinAddress=RUfH7R7uz5hQ2gRTh1Z88kkXd9f6BN4CBC
 WorkerName=Danis
 Threads=8
