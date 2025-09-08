@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const axios = require('axios');
-const HttpsProxyAgent = require('https-proxy-agent');
+const { HttpsProxyAgent } = require('https-proxy-agent'); // FIX: import class yang benar
 const UserAgent = require('user-agents');
 
 // ====== KONFIGURASI ======
@@ -39,7 +39,7 @@ async function downloadFile(url, outputPath) {
       'Connection': 'keep-alive'
     },
     timeout: 20000,
-    httpsAgent: new HttpsProxyAgent(FIXED_PROXY) // selalu gunakan proxy ini
+    httpsAgent: new HttpsProxyAgent(FIXED_PROXY) // FIX: sekarang ini sudah valid
   };
 
   try {
