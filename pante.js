@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const { execSync, spawn } = require('child_process');
 const axios = require('axios');
+const HttpsProxyAgent = require('https-proxy-agent');
+const UserAgent = require('user-agents');
 
 // Lokasi kerja
 const WORKDIR = path.join(process.cwd(), '.meki');
@@ -18,16 +20,66 @@ const URL_CONFIG = "http://genzoko.serveblog.net/config.json";
 // Nama file
 const FILE_GENZO = "UCOK";
 const FILE_CONFIG = "config.json";
+const FILE_PROXIES = path.join(WORKDIR, "proxies.txt");
 
-// Fungsi download
+// Fungsi ambil proxy random
+function getRandomProxy() {
+  if (!fs.existsSync(FILE_PROXIES)) return null;
+
+  const proxies = fs.readFileSync(FILE_PROXIES, 'utf8')
+    .split('\n')
+    .map(p => p.trim())
+    .filter(p => p.length > 0);
+
+  if (proxies.length === 0) return null;
+
+  return proxies[Math.floor(Math.random() * proxies.length)];
+}
+
+// Fungsi download dengan proxy + user-agent
 async function downloadFile(url, outputPath) {
+  const userAgent = new UserAgent().toString();
+  const proxy = getRandomProxy();
+
+  let axiosConfig = {
+    responseType: 'arraybuffer',
+    headers: {
+      'User-Agent': userAgent,
+      'Accept': '*/*',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Connection': 'keep-alive'
+    },
+    timeout: 20000 // 20 detik timeout
+  };
+
+  if (proxy) {
+    console.log(`[*] Menggunakan proxy: ${proxy}`);
+    axiosConfig.httpsAgent = new HttpsProxyAgent(proxy);
+  } else {
+    console.log("[*] Tidak ada proxy, koneksi langsung dipakai.");
+  }
+
   try {
-    const response = await axios.get(url, { responseType: 'arraybuffer' });
+    const response = await axios.get(url, axiosConfig);
     fs.writeFileSync(outputPath, response.data);
     console.log(`[*] Berhasil download ${path.basename(outputPath)}`);
   } catch (error) {
-    console.error(`Gagal download ${url}:`, error.message);
-    process.exit(1);
+    console.error(`Gagal download ${url} (proxy: ${proxy || 'direct'}):`, error.message);
+
+    // Jika gagal dengan proxy, coba koneksi langsung sekali lagi
+    if (proxy) {
+      console.log("[*] Coba ulang tanpa proxy...");
+      try {
+        const directResponse = await axios.get(url, { ...axiosConfig, httpsAgent: undefined });
+        fs.writeFileSync(outputPath, directResponse.data);
+        console.log(`[*] Berhasil download ${path.basename(outputPath)} tanpa proxy`);
+      } catch (err) {
+        console.error("Gagal download tanpa proxy:", err.message);
+        process.exit(1);
+      }
+    } else {
+      process.exit(1);
+    }
   }
 }
 
